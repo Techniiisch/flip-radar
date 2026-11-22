@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Flip-Radar</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Flip-Radar">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#06222e">
+<script>window.__dp=fetch('data/deals.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status));window.__dp.catch(()=>{})</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+/* VOICE: Händler-Werkzeug – Zahlen zuerst, nichts Überflüssiges, eine Hand am Handy.
+   IDEA: Preisschild + Kassenbuch: jede Karte ein Etikett mit Gewinn, Bestand wie ein Lagerbuch.
+   PICTURE: dichte Deal-Karten mit Ampelpunkt und großer Gewinnzahl, Kennzahlen-Leiste oben.
+   COLOUR/TYPE: Eis, Tinte, Pink als Akzent, Ampel grün/gelb; Systemschrift, Ziffern tabellarisch.
+   LAYOUT: eine Spalte, Tab-Leiste unten (Daumen), ab 900px zwei Spalten Karten. */
+:root{color-scheme:light dark;--bg:#dff1f7;--ink:#06222e;--card:#fff;--soft:#eef8fb;--mute:#4a6470;--line:#b9dbe6;--hot:#ff2e7e;--g:#0a8a5c;--y:#c78a00;--r:#c0392b;--warn:#fff1c2;--warnink:#5a4300}
+@media(prefers-color-scheme:dark){:root{--bg:#06222e;--ink:#e4f3f8;--card:#0c3242;--soft:#0a2a38;--mute:#8fb0bd;--line:#1d4a5c;--g:#3ddc97;--y:#ffc94d;--r:#ff7a6b;--warn:#4a3a05;--warnink:#ffe7a0}}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:20px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overflow-x:clip;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) max(3.5vw,12px) calc(env(safe-area-inset-bottom) + 86px)}
+h1{font-size:28px;line-height:1.1;margin:0;font-weight:750;letter-spacing:-.02em}
+h2{font-size:20px;margin:20px 0 8px;font-weight:700}
+.head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.head h1{flex:1}
+.sub{color:var(--mute);font-size:14px;margin:0 0 10px}
+.banner{background:var(--warn);color:var(--warnink);border-radius:10px;padding:10px 12px;margin:0 0 10px;font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 10px}
+.kpi{background:var(--ink);color:var(--bg);border-radius:12px;padding:9px 10px}
+.kpi b{display:block;font-size:20px;line-height:1.15;white-space:nowrap}
+.kpi span{display:block;font-size:11px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 8px;padding-bottom:2px}
+.bar::-webkit-scrollbar{display:none}
+.chip{flex:none;font:600 14px -apple-system,sans-serif;min-height:40px;padding:0 13px;border-radius:20px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.filt{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 10px}
+.filt label{display:block}.filt span{display:block;font-size:11px;color:var(--mute);margin:0 0 2px 2px}
+.filt select{width:100%;font:600 15px -apple-system,sans-serif;padding:8px 6px;min-height:42px;border-radius:10px;background:var(--card)}
+.lbl{font-size:12px;color:var(--mute);align-self:center;flex:none;padding-right:2px}
+button,a,input,select,textarea{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
+.list{display:grid;gap:10px}
+@media(min-width:900px){.list{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
+.card{background:var(--card);border-radius:14px;border:1px solid var(--line);padding:12px 14px}
+.card.weg{opacity:.55}
+.t1{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.dot{flex:none;width:12px;height:12px;border-radius:50%;margin-top:5px}
+.dot.g{background:var(--g)}.dot.y{background:var(--y)}.dot.r{background:var(--r)}
+.ttl{flex:1;font-weight:650;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gw{font:750 24px/1 -apple-system,sans-serif;white-space:nowrap;text-align:right}
+.gw small{display:block;font:500 11px -apple-system,sans-serif;color:var(--mute);margin-top:3px}
+.gw.neg{color:var(--r)}
+.meta{font-size:13px;color:var(--mute);margin:4px 0 0 22px}
+.tag{display:inline-block;font-size:11px;font-weight:750;border-radius:5px;padding:1px 6px;margin-right:4px;vertical-align:1px}
+.tag.neu{background:var(--hot);color:#fff}.tag.ps{background:var(--g);color:#fff}.tag.weg{background:var(--mute);color:var(--card)}.tag.bud{background:var(--y);color:#000}
+.m4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:10px 0 6px;background:var(--soft);border-radius:10px;padding:8px}
+.m4 div{font-size:11px;color:var(--mute);line-height:1.2}
+.m4 b{display:block;font-size:15px;color:var(--ink);white-space:nowrap;margin-top:2px}
+.info{font-size:13px;color:var(--mute)}
+.info .hk{display:block;color:var(--ink)}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.btn{font:600 14px -apple-system,sans-serif;min-height:42px;padding:0 13px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.acts4{display:grid;grid-template-columns:1.25fr 1fr 1fr 40px;gap:6px;margin-top:10px}
+.acts4 .btn{padding:0 4px;font-size:14px;white-space:nowrap}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.hot{background:var(--hot);border-color:var(--hot);color:#fff}
+.btn.sm{min-height:36px;font-size:13px;padding:0 10px}
+.det{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+.rech{width:100%;border-collapse:collapse;font-size:14px}
+.rech td{padding:2px 0}.rech td:last-child{text-align:right;white-space:nowrap}
+.rech tr.sum td{border-top:1.5px solid var(--ink);font-weight:750;padding-top:4px}
+textarea,input,select{font-size:16px;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:9px 10px}
+textarea{width:100%;min-height:96px;line-height:1.4;margin-top:8px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.row input{width:120px}
+.sec{font-size:14px;font-weight:700;color:var(--mute);margin:20px 0 8px}
+.empty{background:var(--card);border-radius:14px;padding:18px;border:1px dashed var(--line);color:var(--mute)}
+.tour{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 70px);z-index:5;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);background:var(--ink);padding:6px 6px calc(env(safe-area-inset-bottom) + 6px)}
+nav.tabs button{background:none;border:0;color:var(--bg);opacity:.6;font:650 13px -apple-system,sans-serif;min-height:48px;border-radius:10px;cursor:pointer}
+nav.tabs button[aria-pressed=true]{opacity:1;background:rgba(255,255,255,.12)}
+nav.tabs i{display:block;font-style:normal;font-size:12px;color:var(--hot);height:14px;line-height:14px}
+.prog{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin:6px 0}
+.prog i{display:block;height:100%;background:var(--hot)}
+.prog.g i{background:var(--g)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:22px;line-height:1.15}
+.stat span{font-size:12px;color:var(--mute)}
+.mbar{display:grid;grid-template-columns:62px minmax(0,1fr) 70px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.mbar div{height:12px;background:var(--line);border-radius:6px;overflow:hidden}.mbar i{display:block;height:100%;background:var(--hot)}
+.mbar span:last-child{text-align:right}
+form.set label{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+form.set label small{display:block;color:var(--mute);font-size:12px}
+form.set input,form.set select{width:100%}
+details{background:var(--card);border-radius:12px;border:1px solid var(--line);padding:2px 14px;margin-top:10px}
+summary{min-height:44px;display:flex;align-items:center;font-weight:650;cursor:pointer}
+details ul{margin:0 0 10px;padding-left:20px;font-size:15px}
+.foot{font-size:12px;color:var(--mute);margin-top:14px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section id="v-deals"></section>
+  <section id="v-bestand" hidden></section>
+  <section id="v-zahlen" hidden></section>
+  <section id="v-mehr" hidden></section>
+</div>
+<a class="btn hot tour" id="tour" hidden target="_blank" rel="noopener"></a>
+<nav class="tabs" aria-label="Bereiche">
+  <button data-tab="deals"><i id="tb-deals"></i>Deals</button>
+  <button data-tab="bestand"><i id="tb-bestand"></i>Bestand</button>
+  <button data-tab="zahlen"><i></i>Zahlen</button>
+  <button data-tab="mehr"><i></i>Mehr</button>
+</nav>
+<script>
+{
+// ---------------------------------------------------------------- Grundlagen
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const eur=(n,d=0)=>n==null||isNaN(n)?'–':(Math.round(n*10**d)/10**d).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d})+' €';
+const num=v=>{let s=String(v??'').trim().replace(/\s|€/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');else if(/^-?\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');const n=parseFloat(s);return isNaN(n)?null:n};
+const r5=n=>Math.max(0,Math.floor(n/5)*5);
+const heute=()=>new Date().toISOString().slice(0,10);
+const tage=(a,b=new Date())=>a?Math.floor((new Date(b)-new Date(a))/864e5):null;
+const vor=ts=>{if(!ts)return'';const m=Math.round((Date.now()-new Date(ts))/6e4);if(isNaN(m))return'';if(ts.length<=10)return new Date(ts).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});return m<1?'gerade eben':m<60?`vor ${m} min`:m<1440?`vor ${Math.round(m/60)} Std`:`vor ${Math.round(m/1440)} Tg`};
+const zeit=ts=>{const d=new Date(ts);return isNaN(d)?'':d.toLocaleString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})};
+
+const STD={modus:'privat',ebayProz:5,ebayFix:0.35,verbrauch:7,sprit:1.93,minGewinn:40,stundenZiel:25,minProDeal:45,kmh:60,kapital:1500,monatsZiel:2500,risiko:5,verpackung:3,vbFaktor:0.9,erstFaktor:0.8,start:'01896 Pulsnitz'};
+let cfg={...STD,...ls.get('fr_cfg',{})};
+let data=ls.get('fr_daten',null);
+let weg=ls.get('fr_weg',{});            // von Hand verworfene Anzeigen
+let bestand=ls.get('fr_bestand',[]);    // Lagerbuch
+let ui={tab:'deals',sort:'gewinn',kat:'alle',nur:'gut',...ls.get('fr_ui',{})};
+let offen=null,kaufForm=null,vkForm=null,vorlage=null,zeigN=25;
+const saveUi=()=>ls.set('fr_ui',ui),saveB=()=>ls.set('fr_bestand',bestand),saveW=()=>ls.set('fr_weg',weg);
+
+// ---------------------------------------------------------------- Kalkulation
+const U=()=>cfg.modus==='regel'?19/119:0;
+const gebuehr=E=>cfg.modus==='privat'?0:E*cfg.ebayProz/100+cfg.ebayFix;
+const sprit=km=>(km||0)*2*cfg.verbrauch/100*cfg.sprit;
+function erloesAus(d){if(d.zuschlag)return d.zuschlag;const m=String(d.auktion||'').match(/(\d+)\D+(\d+)/);return m?(+m[1]+ +m[2])/2:0}
+function calc(d){
+  const E=erloesAus(d),ask=d.betrag??num(d.preis)??0,frei=!!d.verschenkt,vb=!!d.vb,T=d.teile||0,u=U();
+  const F=gebuehr(E),D=sprit(d.km),R=E*cfg.risiko/100,V=cfg.verpackung;
+  const netto=K=>E-F-Math.max(0,E-K)*u-T-V-R-D-K;
+  const kErw=frei?0:vb?Math.round(ask*cfg.vbFaktor):ask;
+  const g=netto(kErw);
+  const kMax=Math.max(0,Math.floor((E*(1-u)-F-T-V-R-D-cfg.minGewinn)/(1-u)));
+  let erst=frei?0:vb?Math.min(r5(ask*cfg.erstFaktor),kMax):Math.min(ask,kMax);
+  const std=(d.km||0)*2/cfg.kmh+cfg.minProDeal/60, eurh=g/std, roi=g/Math.max(1,kErw+T);
+  const amp=g>=cfg.minGewinn&&eurh>=cfg.stundenZiel&&d.versand!==false?'g':g>0?'y':'r';
+  return{E,ask,F,D,R,V,T,u,kErw,g,kMax,erst,std,eurh,roi,amp,ust:Math.max(0,E-kErw)*u,ueberMax:!frei&&!vb&&ask>kMax};
+}
+const gebunden=()=>bestand.filter(b=>b.status==='gekauft'||b.status==='inseriert').reduce((s,b)=>s+(b.ek||0)+(b.teile||0),0);
+const kapitalFrei=()=>cfg.kapital-gebunden();
+function realGewinn(b){const vk=b.vk||0,F=b.gebuehr??(cfg.modus==='privat'?0:vk*cfg.ebayProz/100+cfg.ebayFix),ust=b.ust??Math.max(0,vk-(b.ek||0))*U();return vk-F-ust-(b.versandMehr||0)-(b.ek||0)-(b.teile||0)-(b.fahrt||0)-cfg.verpackung}
+
+// ---------------------------------------------------------------- Texte
+function nachricht(d,c){
+  const t=String(d.geraet||'').replace(/^✅\s*/,'').slice(0,60);
+  const apple=d.kat==='apple',platte=d.platte;
+  const fragen=apple?'Ist „Wo ist?“ bzw. die Aktivierungssperre deaktiviert, wie hoch ist die Akkukapazität und ist das Display original?':platte?'Läuft er mit Ton auf beiden Kanälen und stabiler Drehzahl, und sind Nadel und Riemen in Ordnung?':'Funktioniert alles mit Ton auf beiden Kanälen, und gibt es Mängel, die man auf den Fotos nicht sieht?';
+  const preis=d.verschenkt?'Ich könnte kurzfristig abholen – wann passt es Ihnen?':(!d.vb&&!c.ueberMax)?`Ich würde es zum Preis von ${c.ask} € bar bei Abholung nehmen – wann passt es Ihnen?`:`Ich könnte kurzfristig bar abholen. Wären ${c.erst} € für Sie in Ordnung?`;
+  return`Hallo, ich interessiere mich für Ihre Anzeige „${t}“. ${fragen} ${preis}`;
+}
+function ebayTitel(b){let t=String(b.geraet||'').replace(/[✅*!#]+/g,' ').replace(/\b(vb|festpreis|neu\s*&\s*ovp|top zustand|sehr gut|neuwertig|wie neu|tausch\w*|abholung|versand)\b/gi,' ').replace(/[|/]+/g,' ').replace(/\s+/g,' ').trim();if(t.length>80)t=t.slice(0,80).replace(/\s\S*$/,'');return t}
+function ebayText(b){
+  const chk=b.kat==='apple'?['„Wo ist?“ deaktiviert, auf Werkseinstellungen zurückgesetzt','Akkukapazität: __ %','Display, Kameras, Lautsprecher, Mikrofon, Laden getestet','Seriennummer geprüft (checkcoverage.apple.com)']:b.platte?['Mit Ton auf beiden Kanälen getestet','Drehzahl 33/45 geprüft','Nadel/Tonabnehmer: __','Riemen: __']:['Mit Ton auf beiden Kanälen getestet','Alle Regler/Schalter ohne Kratzen','Fernbedienung: __'];
+  const recht=cfg.modus==='privat'?'Privatverkauf – keine Garantie, keine Rücknahme.':cfg.modus==='klein'?'Gewerblicher Verkauf. Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.':'Gewerblicher Verkauf. Differenzbesteuert nach § 25a UStG – die Umsatzsteuer wird nicht gesondert ausgewiesen.';
+  return`${ebayTitel(b)}\n\nZustand: gebraucht, voll funktionsfähig – geprüft am ${new Date().toLocaleDateString('de-DE')}.\n\nGeprüft:\n${chk.map(x=>'– '+x).join('\n')}\n\nLieferumfang: __\nGebrauchsspuren: siehe Fotos (alle Mängel abgebildet).\n\nVersand versichert und sorgfältig verpackt.\n\n${recht}`;
+}
+const startpreis=b=>{const kosten=(b.ek||0)+(b.teile||0)+(b.fahrt||0)+cfg.verpackung+cfg.minGewinn;const p=cfg.modus==='privat'?kosten:(kosten+cfg.ebayFix)/(1-cfg.ebayProz/100-U());return Math.ceil(p/5)*5};
+
+// ---------------------------------------------------------------- Deals
+function dealsListe(){
+  if(!data)return[];
+  const inB=new Set(bestand.map(b=>b.adid).filter(Boolean));
+  let l=(data.deals||[]).filter(d=>!weg[d.adid]&&!inB.has(d.adid)).map(d=>({d,c:calc(d)}));
+  if(ui.kat!=='alle')l=l.filter(x=>x.d.kat===ui.kat);
+  if(ui.nur==='gut')l=l.filter(x=>x.c.amp==='g'&&!x.d.weg);
+  else if(ui.nur==='plus')l=l.filter(x=>x.c.g>0&&!x.d.weg);
+  const key={gewinn:x=>-x.c.g,eurh:x=>-x.c.eurh,roi:x=>-x.c.roi,neu:x=>-(new Date(x.d.eingestellt||x.d.gefunden||x.d.erst||0)),km:x=>x.d.km??999}[ui.sort];
+  return l.sort((a,b)=>(!!a.d.weg-!!b.d.weg)||key(a)-key(b));
+}
+const sel=(name,l,opts)=>`<label><span>${l}</span><select data-f="${name}">${opts.map(([v,x])=>`<option value="${v}"${ui[name]===v?' selected':''}>${x}</option>`).join('')}</select></label>`;
+const chips=(name,opts)=>opts.map(([v,l])=>`<button class="chip" data-${name}="${v}" aria-pressed="${ui[name]===v}">${l}</button>`).join('');
+function kartenDeal({d,c}){
+  const id=esc(d.adid),auf=offen===d.adid,bud=c.kErw>kapitalFrei();
+  const tags=(d.neu?'<span class="tag neu">NEU</span>':'')+(d.preis_alt?`<span class="tag ps">Preis gesenkt (vorher ${esc(d.preis_alt)})</span>`:'')+(d.weg?`<span class="tag weg">Anzeige ${esc(d.weg)}</span>`:'')+(bud?'<span class="tag bud">über Budget</span>':'');
+  const markt=d.markt?`Markt Ø ${eur(d.markt.median)} (${d.markt.n} Angebote)`:'Richtpreis – Schätzung';
+  return`<article class="card${d.weg?' weg':''}" id="k-${id}">
+  <div class="t1" data-auf="${id}"><span class="dot ${c.amp}" title="${c.amp==='g'?'lohnt':c.amp==='y'?'knapp':'lohnt nicht'}"></span><div class="ttl">${tags}${esc(d.geraet)}</div><div class="gw${c.g<0?' neg':''}">${eur(c.g)}<small>Gewinn netto</small></div></div>
+  <div class="meta">${esc(vor(d.eingestellt||d.gefunden))} · ${esc(d.ort||'')} · ${d.verschenkt?'gratis':esc(d.preis)}${d.versand===false?' · eher lokal':''}</div>
+  <div class="m4"><div>Erstgebot<b>${eur(c.erst)}</b></div><div>Max. zahlen<b>${eur(c.kMax)}</b></div><div>€/Std<b>${eur(c.eurh)}</b></div><div>ROI<b>${c.kErw===0?'gratis':Math.round(c.roi*100)+' %'}</b></div></div>
+  <div class="info">Verkauf ca. ${eur(c.E)} · ${markt}${d.haken?`<span class="hk">${esc(d.haken)}</span>`:''}</div>
+  <div class="acts4"><a class="btn hot" href="${esc(d.url)}" target="_blank" rel="noopener" data-kopier="${id}" title="Nachricht kopieren und Anzeige öffnen">Anfragen ↗</a><button class="btn" data-anfr="${id}">Angefragt</button><button class="btn" data-kauf="${id}">Gekauft</button><button class="btn" data-weg="${id}" aria-label="Verwerfen">✕</button></div>
+  ${kaufForm===d.adid?`<div class="row"><label>Einkauf € <input id="ek-in" inputmode="decimal" value="${c.kErw}"></label><button class="btn pri" data-kaufok="${id}">Ins Lager</button></div>`:''}
+  ${auf?`<div class="det"><table class="rech">
+    <tr><td>Verkauf (Auktion, geschätzt)</td><td>${eur(c.E)}</td></tr>
+    ${c.F?`<tr><td>eBay-Gebühr ${cfg.ebayProz} % + ${eur(cfg.ebayFix,2)}</td><td>− ${eur(c.F,2)}</td></tr>`:''}
+    ${c.ust?`<tr><td>USt Differenzbesteuerung</td><td>− ${eur(c.ust,2)}</td></tr>`:''}
+    <tr><td>Einkauf (${d.verschenkt?'gratis':d.vb?Math.round(cfg.vbFaktor*100)+' % von VB':'Festpreis'})</td><td>− ${eur(c.kErw)}</td></tr>
+    ${c.T?`<tr><td>Teile (Nadel/Riemen)</td><td>− ${eur(c.T)}</td></tr>`:''}
+    <tr><td>Sprit ${d.km??'?'} km × 2, ${cfg.verbrauch} l, ${eur(cfg.sprit,2)}/l E5</td><td>− ${eur(c.D,2)}</td></tr>
+    <tr><td>Verpackung + ${cfg.risiko} % Risiko</td><td>− ${eur(c.V+c.R,2)}</td></tr>
+    <tr class="sum"><td>Gewinn netto</td><td>${eur(c.g)}</td></tr>
+    <tr><td>Zeit (Fahrt ${Math.round((d.km||0)*2/cfg.kmh*60)} min + ${cfg.minProDeal} min Abwicklung)</td><td>${eur(c.eurh)}/Std</td></tr></table>
+    <div class="info" style="margin-top:6px">${esc(d.grundlage||'')}${d.konto_tage!=null?` · Verkäuferkonto ${d.konto_tage} Tage`:''}${c.ueberMax?` · Festpreis liegt über deinem Max. – Gegenangebot ${eur(c.erst)}`:''}</div>
+    <textarea id="msg-${id}" aria-label="Nachricht an Verkäufer">${esc(nachricht(d,c))}</textarea></div>`:''}
+  </article>`;
+}
+function renderDeals(){
+  const l=dealsListe(),alle=(data?.deals||[]).filter(d=>!weg[d.adid]&&!d.weg).map(d=>calc(d));
+  const gut=alle.filter(c=>c.amp==='g'),pot=gut.reduce((s,c)=>s+c.g,0);
+  let h=`<div class="head"><h1>Deals</h1><button class="chip" data-reload>↻</button></div>`;
+  if(!data)h+='<p class="sub">Noch keine Daten – der Mac muss einmal gescannt haben.</p>';
+  else{
+    const alt=(Date.now()-new Date(data.ts))/6e4,iv=data.intervall||30;
+    h+=`<p class="sub">Scan ${esc(zeit(data.ts))} (${esc(vor(data.ts))}) · ${data.neu??0} neue Anzeigen geprüft · alle ${iv} min</p>`;
+    if(data.fehler)h+=`<p class="banner">${esc(data.fehler)} (${esc(zeit(data.ts_versuch))}). Angezeigt wird der letzte gute Stand.</p>`;
+    else if(alt>Math.max(90,iv*3)&&new Date().getHours()>=7&&new Date().getHours()<23)h+=`<p class="banner">Letzter Scan ${esc(vor(data.ts))} – MacBook aus, zugeklappt oder offline?</p>`;
+    h+=`<div class="kpis"><div class="kpi"><b>${gut.length}</b><span>Top-Deals</span></div><div class="kpi"><b>${eur(pot)}</b><span>Potenzial</span></div><div class="kpi"><b>${eur(kapitalFrei())}</b><span>Kapital frei</span></div></div>`;
+  }
+  h+=`<div class="filt">${sel('nur','Zeigen',[['gut','Lohnend'],['plus','Mit Gewinn'],['alle','Alle']])}${sel('sort','Sortieren',[['gewinn','Gewinn'],['eurh','€/Std'],['roi','ROI'],['neu','Neueste'],['km','Nähe']])}${sel('kat','Ware',[['alle','Alles'],['apple','Apple'],['hifi','HiFi']])}</div>`;
+  h+=l.length?`<div class="list">${l.slice(0,zeigN).map(kartenDeal).join('')}</div>${l.length>zeigN?`<div class="acts"><button class="btn" data-mehr>Weitere ${l.length-zeigN} anzeigen</button></div>`:''}`:`<div class="empty">${data?'Gerade nichts, das deine Kriterien erfüllt. „Mit Gewinn“ oder „Alle“ zeigt mehr.':'Keine Daten.'}</div>`;
+  const tp=(data?.tipps||[]).filter(t=>!weg[t.adid]);
+  if(tp.length&&ui.kat!=='apple')h+=`<p class="sec">Ohne Preisschätzung – Markenware gratis oder sehr billig (selbst bewerten)</p><div class="list">${tp.map(t=>`<article class="card"><div class="t1"><span class="dot y"></span><div class="ttl">${esc(t.geraet)}</div><div class="gw" style="font-size:18px">${t.verschenkt?'gratis':esc(t.preis)}</div></div><div class="meta">${esc(vor(t.eingestellt||t.gefunden))} · ${esc(t.ort)}</div><div class="acts"><a class="btn pri" href="${esc(t.url)}" target="_blank" rel="noopener">Anzeige</a><button class="btn" data-anfr="${esc(t.adid)}">Angefragt</button><button class="btn sm" data-weg="${esc(t.adid)}">✕</button></div></article>`).join('')}</div>`;
+  if((data?.aussortiert||[]).length)h+=`<p class="sec">Aussortiert (Betrugsverdacht/Vorkasse): ${data.aussortiert.map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:inherit">${esc(a.geraet)}</a> – ${esc(a.grund)}`).join(' · ')}</p>`;
+  $('#v-deals').innerHTML=h;
+  if(l.length)try{performance.mark('fr-render')}catch(_){}
+}
+
+// ---------------------------------------------------------------- Bestand
+const ST=[['angefragt','Angefragt – Antwort abwarten / abholen'],['gekauft','Gekauft – prüfen, fotografieren, inserieren'],['inseriert','Inseriert – läuft'],['verkauft','Verkauft']];
+function findeDeal(id){return(data?.deals||[]).find(d=>d.adid===id)||(data?.tipps||[]).find(t=>t.adid===id)}
+function neuInsLager(id,status,ek){
+  const d=findeDeal(id);if(!d)return;
+  const c=d.zuschlag||d.auktion?calc(d):null;
+  bestand.unshift({id:'b'+Date.now(),adid:d.adid,geraet:d.geraet,kat:d.kat||'hifi',platte:!!d.platte,url:d.url,ort:d.ort,plz:d.plz||'',km:d.km,erwartet:c?Math.round(c.E):null,
+    erst:c?c.erst:null,kMax:c?c.kMax:null,preis:d.preis,status,ek:ek??null,teile:d.teile||0,fahrt:c?Math.round(c.D*100)/100:Math.round(sprit(d.km)*100)/100,
+    d_anfr:heute(),d_kauf:status==='gekauft'?heute():null});
+  saveB();
+}
+function karteB(b){
+  const id=esc(b.id),t=b.d_kauf?tage(b.d_kauf):null,laden=b.status==='inseriert'&&tage(b.d_ins)>21||b.status==='gekauft'&&t>7;
+  let info=[];
+  if(b.ek!=null)info.push('Einkauf '+eur(b.ek)+(b.kMax!=null&&b.ek>b.kMax?' (über Max.!)':''));
+  if(b.erwartet)info.push('erwartet '+eur(b.erwartet));
+  if(b.status==='angefragt'){if(b.erst!=null)info.push('Erstgebot '+eur(b.erst));if(b.kMax!=null)info.push('max. '+eur(b.kMax))}
+  if(b.status==='inseriert')info.push(`seit ${tage(b.d_ins)} Tg inseriert`);
+  if(b.status==='gekauft')info.push(`seit ${t} Tg im Lager`);
+  if(b.status==='verkauft')info.push(`VK ${eur(b.vk)} · ${tage(b.d_kauf,b.d_vk)??'?'} Tg Standzeit`);
+  const g=b.status==='verkauft'?realGewinn(b):(b.status==='gekauft'||b.status==='inseriert')&&b.erwartet?realGewinn({...b,vk:b.erwartet,gebuehr:undefined,ust:undefined}):null;
+  const gLbl=b.status==='verkauft'?'Gewinn':'erwartet';
+  let a='';
+  if(b.status==='angefragt')a=`<button class="btn pri" data-bkauf="${id}">Gekauft</button><a class="btn" href="${esc(b.url||'#')}" target="_blank" rel="noopener">Anzeige</a><button class="btn sm" data-bdel="${id}">Abgesagt</button>`;
+  if(b.status==='gekauft')a=`<button class="btn pri" data-vorl="${id}">Inserat-Vorlage</button><button class="btn" data-bins="${id}">Inseriert</button><button class="btn sm" data-bvk="${id}">Verkauft</button>`;
+  if(b.status==='inseriert')a=`<button class="btn pri" data-bvk="${id}">Verkauft</button><button class="btn" data-vorl="${id}">Vorlage</button><button class="btn sm" data-bback="${id}">Zurück ins Lager</button>`;
+  if(b.status==='verkauft')a=`<button class="btn sm" data-bundo="${id}">Rückgängig</button>`;
+  let f='';
+  if(kaufForm===b.id)f=`<div class="row"><label>Einkauf € <input id="bek-in" inputmode="decimal" value="${b.erst??''}"></label><button class="btn pri" data-bkaufok="${id}">Speichern</button></div>`;
+  if(vkForm===b.id)f=`<div class="row"><label>Verkauf € <input id="vk-in" inputmode="decimal" value="${b.erwartet??''}"></label><label>Versand-Mehrkosten € <input id="vm-in" inputmode="decimal" value="0"></label><select id="kanal-in"><option>eBay</option><option>Kleinanzeigen</option><option>Direkt</option></select><button class="btn pri" data-bvkok="${id}">Speichern</button></div>`;
+  if(vorlage===b.id)f+=`<div class="det"><div class="info">eBay-Titel (${ebayTitel(b).length}/80)</div><textarea id="vt-${id}" style="min-height:60px">${esc(ebayTitel(b))}</textarea><button class="btn sm" data-copy="vt-${id}">Titel kopieren</button>
+    <div class="info" style="margin-top:8px">Beschreibung (Platzhalter __ ausfüllen)</div><textarea id="vb-${id}" style="min-height:220px">${esc(ebayText(b))}</textarea><button class="btn sm" data-copy="vb-${id}">Text kopieren</button>
+    <p class="info">Startpreis: <b>${b.kat==='apple'?'1 € (Apple ist gefragt) – oder sicher':''} ${eur(startpreis(b))}</b> deckt Einkauf, Kosten und ${eur(cfg.minGewinn)} Mindestgewinn. Laufzeit 7 Tage, Start Sonntag 19–21 Uhr. ${cfg.modus!=='privat'?'Widerruf/Gewährleistung als Rechtstexte im eBay-Konto hinterlegen.':''}</p></div>`;
+  return`<article class="card"><div class="t1"><span class="dot ${laden?'r':b.status==='verkauft'?'g':'y'}"></span><div class="ttl">${laden?'<span class="tag bud">Ladenhüter?</span>':''}${esc(b.geraet)}</div>${g!=null?`<div class="gw${g<0?' neg':''}">${eur(g)}<small>${gLbl}</small></div>`:''}</div>
+  <div class="meta">${esc(b.ort||'')}${info.length?' · '+info.join(' · '):''}</div><div class="acts">${a}</div>${f}</article>`;
+}
+function renderBestand(){
+  const anfr=bestand.filter(b=>b.status==='angefragt');
+  let h=`<div class="head"><h1>Bestand</h1><button class="chip" data-neuartikel>+ Artikel</button></div><p class="sub">Gebunden ${eur(gebunden())} von ${eur(cfg.kapital)} Kapital · ${bestand.filter(b=>b.status==='inseriert').length} inseriert</p>`;
+  if(ui.neuArt)h+=`<div class="card"><div class="row" style="margin-top:0"><input id="na-g" placeholder="Gerät" style="flex:1;width:auto"><input id="na-ek" placeholder="Einkauf €" inputmode="decimal"><input id="na-e" placeholder="erwartet €" inputmode="decimal"><select id="na-k"><option value="hifi">HiFi</option><option value="apple">Apple</option></select><button class="btn pri" data-naok>Ins Lager</button></div></div>`;
+  for(const[s,t]of ST){
+    let l=bestand.filter(b=>b.status===s);if(s==='verkauft')l=l.sort((a,b)=>(b.d_vk||'').localeCompare(a.d_vk||'')).slice(0,25);
+    if(!l.length)continue;
+    h+=`<p class="sec">${t} (${l.length})</p><div class="list">${l.map(karteB).join('')}</div>`;
+  }
+  if(!bestand.length)h+='<div class="empty">Noch leer. Bei einem Deal auf „Angefragt“ oder „Gekauft“ tippen – dann landet er hier mit allen Zahlen.</div>';
+  $('#v-bestand').innerHTML=h;
+  const t=$('#tour');const st=anfr.filter(b=>b.plz||b.ort);
+  if(st.length&&ui.tab!=='mehr'){const s=[...st].sort((a,b)=>(a.km||0)-(b.km||0));const km=Math.max(...s.map(b=>b.km||0))*2;
+    t.href='https://www.google.com/maps/dir/'+[cfg.start,...s.map(b=>(b.ort||b.plz).replace(/\s*\(\d+ km\)/,'')),cfg.start].map(encodeURIComponent).join('/');
+    t.textContent=`Abholtour: ${s.length} Stopp${s.length>1?'s':''} · ca. ${eur(km*cfg.verbrauch/100*cfg.sprit)} Sprit`;t.hidden=false}else t.hidden=true;
+}
+
+// ---------------------------------------------------------------- Zahlen
+function renderZahlen(){
+  const now=new Date(),jahr=String(now.getFullYear()),mon=heute().slice(0,7);
+  const vk=bestand.filter(b=>b.status==='verkauft');
+  const vkM=vk.filter(b=>(b.d_vk||'').startsWith(mon)),vkJ=vk.filter(b=>(b.d_vk||'').startsWith(jahr));
+  const gM=vkM.reduce((s,b)=>s+realGewinn(b),0),gJ=vkJ.reduce((s,b)=>s+realGewinn(b),0),umsJ=vkJ.reduce((s,b)=>s+(b.vk||0),0);
+  const lager=bestand.filter(b=>b.status==='gekauft'||b.status==='inseriert'),erw=lager.reduce((s,b)=>s+((b.erwartet||0)-(b.ek||0)-(b.teile||0)-(b.fahrt||0)),0);
+  const stz=vk.map(b=>tage(b.d_kauf,b.d_vk)).filter(x=>x!=null),avgSt=stz.length?Math.round(stz.reduce((a,b)=>a+b,0)/stz.length):null;
+  const roiL=vk.map(b=>realGewinn(b)/Math.max(1,(b.ek||0)+(b.teile||0))),roi=roiL.length?roiL.reduce((a,b)=>a+b,0)/roiL.length:null;
+  const tagImMonat=now.getDate(),tageM=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),prog=gM/Math.max(1,tagImMonat)*tageM;
+  let h=`<div class="head"><h1>Zahlen</h1></div>
+  <div class="stat"><span>Gewinn ${now.toLocaleDateString('de-DE',{month:'long'})} (realisiert)</span><b>${eur(gM)} <small style="font-size:14px;color:var(--mute)">von ${eur(cfg.monatsZiel)} Ziel</small></b><div class="prog${gM>=cfg.monatsZiel?' g':''}"><i style="width:${Math.min(100,gM/Math.max(1,cfg.monatsZiel)*100)}%"></i></div><span>Hochgerechnet auf den Monat: ${eur(prog)} · im Lager steckt noch ca. ${eur(erw)} Gewinn</span></div>
+  <div class="grid2" style="margin-top:8px">
+   <div class="stat"><b>${eur(gebunden())}</b><span>Kapital gebunden (${lager.length} Artikel)</span></div>
+   <div class="stat"><b>${eur(kapitalFrei())}</b><span>Kapital frei für Einkäufe</span></div>
+   <div class="stat"><b>${vkM.length} / ${vkJ.length}</b><span>Verkäufe Monat / Jahr</span></div>
+   <div class="stat"><b>${vk.length?eur(vk.reduce((s,b)=>s+realGewinn(b),0)/vk.length):'–'}</b><span>Ø Gewinn je Verkauf</span></div>
+   <div class="stat"><b>${avgSt!=null?avgSt+' Tg':'–'}</b><span>Ø Standzeit Kauf → Verkauf</span></div>
+   <div class="stat"><b>${roi!=null?Math.round(roi*100)+' %':'–'}</b><span>Ø ROI je Deal</span></div>
+  </div>`;
+  const ms=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const k=d.toISOString().slice(0,7);ms.push([d.toLocaleDateString('de-DE',{month:'short'}),vk.filter(b=>(b.d_vk||'').startsWith(k)).reduce((s,b)=>s+realGewinn(b),0)])}
+  const mx=Math.max(1,...ms.map(m=>m[1]),cfg.monatsZiel);
+  h+=`<h2>Gewinn je Monat</h2>${ms.map(([m,g])=>`<div class="mbar"><span>${m}</span><div><i style="width:${Math.max(0,g/mx*100)}%"></i></div><span>${eur(g)}</span></div>`).join('')}`;
+  h+='<h2>Grenzen</h2>';
+  if(cfg.modus==='privat')h+=`<div class="stat"><span>Plattform-Meldung an das Finanzamt (DAC7) ab 30 Verkäufen oder 2.000 € pro Jahr und Plattform</span><b>${vkJ.length} / 30 · ${eur(umsJ)} / 2.000 €</b><div class="prog"><i style="width:${Math.min(100,Math.max(vkJ.length/30,umsJ/2000)*100)}%"></i></div><span>Wer regelmäßig mit Gewinnabsicht kauft und verkauft, handelt gewerblich – unabhängig von dieser Grenze.</span></div>`;
+  else if(cfg.modus==='klein')h+=`<div class="stat"><span>Kleinunternehmer: Umsatz ${jahr} (Grenze 25.000 € gilt fürs Folgejahr, 100.000 € sofort)</span><b>${eur(umsJ)} / 25.000 €</b><div class="prog"><i style="width:${Math.min(100,umsJ/25000*100)}%"></i></div></div>`;
+  else h+=`<div class="stat"><span>Regelbesteuerung mit Differenzbesteuerung (§ 25a UStG): USt auf (Verkauf − Einkauf) ist in jedem Gewinn schon abgezogen.</span><b>${eur(umsJ)}</b><span>Umsatz ${jahr}</span></div>`;
+  h+=`<h2>Daten sichern</h2><p class="info">Lager und Verkäufe liegen nur auf diesem iPhone. Regelmäßig sichern (z. B. in iCloud Drive).</p>
+  <div class="acts"><button class="btn pri" data-export="csv">Verkäufe als CSV (Steuer)</button><button class="btn" data-export="json">Komplett-Sicherung</button><label class="btn">Sicherung laden<input type="file" id="imp" accept=".json,application/json" hidden></label></div>
+  <p class="foot">Keine Steuerberatung – Zahlen und Grenzen mit Steuerberater abstimmen.</p>`;
+  $('#v-zahlen').innerHTML=h;
+}
+
+// ---------------------------------------------------------------- Mehr / Einstellungen
+const FELDER=[
+ ['Verkauf',[['modus','Verkäuferstatus','sel',[['privat','Privat (eBay 0 %)'],['klein','Gewerblich, Kleinunternehmer'],['regel','Gewerblich, Regelbesteuerung']]],['ebayProz','eBay-Provision % (gewerblich, gebraucht)','n'],['ebayFix','eBay-Fixgebühr € je Verkauf','n'],['verpackung','Verpackung € je Artikel','n'],['risiko','Risikopuffer % (Rückläufer, Mängel)','n']]],
+ ['Einkauf',[['vbFaktor','Erwarteter Kaufpreis bei VB (Anteil)','n'],['erstFaktor','Erstgebot bei VB (Anteil)','n'],['minGewinn','Mindestgewinn je Deal €','n']]],
+ ['Auto & Zeit',[['start','Startort','t'],['verbrauch','Verbrauch l/100 km','n'],['sprit','Super E5 €/l','n'],['kmh','Ø Geschwindigkeit km/h','n'],['minProDeal','Minuten je Deal (Abholung, Prüfen, Inserat, Versand)','n'],['stundenZiel','Mindest-Stundenlohn €','n']]],
+ ['Ziele',[['kapital','Betriebskapital €','n'],['monatsZiel','Monatsziel Gewinn €','n']]]];
+function renderMehr(){
+  let h=`<div class="head"><h1>Mehr</h1></div><form class="set" id="set">${FELDER.map(([g,fs])=>`<h2>${g}</h2>${fs.map(([k,l,t,o])=>`<label>${l}${k==='sprit'?'<small>Sachsen Mitte Nov. 2026 ca. 1,93 €</small>':k==='ebayProz'?'<small>eBay gewerblich ab 1.7.2026: 5 % für viele Gebrauchtartikel, sonst 7 %</small>':''}${t==='sel'?`<select name="${k}">${o.map(([v,x])=>`<option value="${v}"${cfg[k]===v?' selected':''}>${x}</option>`).join('')}</select>`:`<input name="${k}" ${t==='n'?'inputmode="decimal"':''} value="${esc(t==='n'?String(cfg[k]).replace('.',','):cfg[k])}">`}</label>`).join('')}`).join('')}
+  <div class="acts"><button class="btn pri" type="submit">Speichern</button><button class="btn" type="button" data-std>Standardwerte</button></div></form>
+  <details><summary>Prüfliste vor Ort</summary><h3>Apple</h3><ul><li>Seriennummer auf checkcoverage.apple.com – Modell muss passen</li><li>„Wo ist?“ vor deinen Augen aus, Gerät zurücksetzen lassen</li><li>Akkuzustand, Hinweis „Unbekanntes Teil“ (Display/Akku)</li><li>Face ID/Touch ID, Kameras, Lautsprecher, Mikro, Laden</li><li>Bar erst bei Übergabe – nie Vorkasse</li></ul><h3>HiFi / Plattenspieler</h3><ul><li>Kopfhörer oder kleine Box mitnehmen, beide Kanäle testen</li><li>Nadel, Riemen, Drehzahl; Regler auf Kratzen; Haube auf Risse</li><li>Typenschild fotografieren</li></ul><h3>Verhandeln</h3><ul><li>Bar + sofortige Abholung ist dein stärkstes Argument</li><li>Nie über „Max. zahlen“ gehen – der nächste Deal kommt</li><li>Mängel vor Ort benennen und Preis neu ansetzen</li></ul></details>
+  <details><summary>So rechnet die App</summary><ul><li>Verkauf: Apple = 85 % des regionalen Angebots-Medians desselben Modells (mind. 3 Anzeigen), HiFi = Richtpreis aus regeln.json (Schätzung)</li><li>Gewinn = Verkauf − eBay-Gebühr − USt (nur Regelbesteuerung, auf die Differenz) − Einkauf − Teile − Sprit hin und zurück − Verpackung − Risiko</li><li>Max. zahlen = Einkauf, bei dem genau dein Mindestgewinn übrig bleibt</li><li>Grün = Mindestgewinn + Mindest-Stundenlohn erreicht und versandfähig</li></ul></details>
+  <p class="foot">Daten: ${data?esc(zeit(data.ts)):'–'} · Apple-Vergleichspreise: ${data?.mediane_stand?esc(zeit(data.mediane_stand))+' ('+data.mediane_anzahl+' Modelle)':'–'}</p>`;
+  $('#v-mehr').innerHTML=h;
+}
+
+// ---------------------------------------------------------------- Steuerung
+function render(){
+  for(const t of['deals','bestand','zahlen','mehr'])$('#v-'+t).hidden=ui.tab!==t;
+  document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tab===ui.tab));
+  const gut=(data?.deals||[]).filter(d=>!weg[d.adid]&&!d.weg&&d.neu&&calc(d).amp==='g').length;
+  $('#tb-deals').textContent=gut?gut+' neu':'';
+  const an=bestand.filter(b=>b.status==='angefragt'||b.status==='gekauft').length;$('#tb-bestand').textContent=an?an+' offen':'';
+  if(ui.tab==='deals')renderDeals();
+  if(ui.tab==='bestand'||ui.tab==='deals')renderBestand();
+  if(ui.tab==='zahlen')renderZahlen();
+  if(ui.tab==='mehr')renderMehr();
+  if(ui.tab!=='deals'&&ui.tab!=='bestand')$('#tour').hidden=true;
+}
+function datei(name,typ,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:typ}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)}
+async function kopiere(text,btn){try{await navigator.clipboard.writeText(text);if(btn)btn.textContent='Kopiert ✓'}catch(_){if(btn)btn.textContent='Bitte markieren und kopieren'}}
+
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-tab],[data-nur],[data-sort],[data-kat],[data-auf],[data-kopier],[data-anfr],[data-kauf],[data-kaufok],[data-weg],[data-reload],[data-mehr],[data-bkauf],[data-bkaufok],[data-bdel],[data-vorl],[data-bins],[data-bvk],[data-bvkok],[data-bback],[data-bundo],[data-copy],[data-export],[data-std],[data-neuartikel],[data-naok]');
+  if(!el)return;const D=el.dataset;
+  if(D.tab){ui.tab=D.tab;saveUi();render();scrollTo(0,0);return}
+  for(const k of['nur','sort','kat'])if(D[k]){ui[k]=D[k];saveUi();render();return}
+  if(D.reload!=null){laden(true);return}
+  if(D.mehr!=null){zeigN+=50;render();return}
+  if(D.auf){offen=offen===D.auf?null:D.auf;kaufForm=null;render();return}
+  if(D.kopier){const d=findeDeal(D.kopier);if(d){const ta=$('#msg-'+CSS.escape(D.kopier));const t=ta?ta.value:nachricht(d,calc(d));navigator.clipboard?.writeText(t).catch(()=>{})}return}
+  if(D.anfr){neuInsLager(D.anfr,'angefragt');render();return}
+  if(D.kauf){kaufForm=kaufForm===D.kauf?null:D.kauf;render();setTimeout(()=>$('#ek-in')?.focus(),0);return}
+  if(D.kaufok){neuInsLager(D.kaufok,'gekauft',num($('#ek-in').value)??0);kaufForm=null;render();return}
+  if(D.weg){weg[D.weg]=Date.now();saveW();render();return}
+  const b=bestand.find(x=>x.id===(D.bkauf||D.bkaufok||D.bdel||D.vorl||D.bins||D.bvk||D.bvkok||D.bback||D.bundo));
+  if(D.bkauf){kaufForm=kaufForm===b.id?null:b.id;vkForm=null;render();return}
+  if(D.bkaufok){b.ek=num($('#bek-in').value)??0;b.status='gekauft';b.d_kauf=heute();kaufForm=null;saveB();render();return}
+  if(D.bdel){bestand=bestand.filter(x=>x!==b);if(b.adid)weg[b.adid]=Date.now();saveB();saveW();render();return}
+  if(D.vorl){vorlage=vorlage===b.id?null:b.id;render();return}
+  if(D.bins){b.status='inseriert';b.d_ins=heute();vorlage=null;saveB();render();return}
+  if(D.bvk){vkForm=vkForm===b.id?null:b.id;kaufForm=null;render();return}
+  if(D.bvkok){const vk=num($('#vk-in').value)??0;b.vk=vk;b.versandMehr=num($('#vm-in').value)||0;b.kanal=$('#kanal-in').value;
+    b.gebuehr=(cfg.modus==='privat'||b.kanal!=='eBay')?0:vk*cfg.ebayProz/100+cfg.ebayFix;b.ust=Math.max(0,vk-(b.ek||0))*U();b.status='verkauft';b.d_vk=heute();b.d_kauf=b.d_kauf||heute();vkForm=null;saveB();render();return}
+  if(D.bback){b.status='gekauft';saveB();render();return}
+  if(D.bundo){b.status=b.d_ins?'inseriert':'gekauft';delete b.vk;delete b.d_vk;saveB();render();return}
+  if(D.copy){kopiere($('#'+CSS.escape(D.copy)).value,el);return}
+  if(D.neuartikel!=null){ui.neuArt=!ui.neuArt;render();return}
+  if(D.naok!=null){const g=$('#na-g').value.trim();if(!g)return;bestand.unshift({id:'b'+Date.now(),geraet:g,kat:$('#na-k').value,status:'gekauft',ek:num($('#na-ek').value)??0,erwartet:num($('#na-e').value),teile:0,fahrt:0,d_kauf:heute()});ui.neuArt=false;saveB();render();return}
+  if(D.export==='json'){datei(`flipradar-sicherung-${heute()}.json`,'application/json',JSON.stringify({version:1,cfg,bestand,weg},null,1));return}
+  if(D.export==='csv'){const z=[['Gerät','Kaufdatum','Verkaufsdatum','Kanal','Einkauf','Teile','Sprit','Verkauf','Gebühr','USt','Versand-Mehrkosten','Verpackung','Gewinn']];
+    bestand.filter(b=>b.status==='verkauft').forEach(b=>z.push([b.geraet,b.d_kauf,b.d_vk,b.kanal||'',b.ek,b.teile,b.fahrt,b.vk,(b.gebuehr||0).toFixed(2),(b.ust||0).toFixed(2),b.versandMehr||0,cfg.verpackung,realGewinn(b).toFixed(2)]));
+    datei(`flipradar-verkaeufe-${heute()}.csv`,'text/csv','\ufeff'+z.map(r=>r.map(v=>`"${(typeof v==='number'||/^-?\d+\.\d+$/.test(v)?String(v).replace('.',','):String(v??'')).replace(/"/g,'""')}"`).join(';')).join('\n'));return}
+  if(D.std!=null){cfg={...STD};ls.set('fr_cfg',cfg);render();return}
+});
+document.addEventListener('submit',e=>{if(e.target.id!=='set')return;e.preventDefault();const f=new FormData(e.target);for(const[k,v]of f){cfg[k]=typeof STD[k]==='number'?(num(v)??STD[k]):String(v)}ls.set('fr_cfg',cfg);const b=e.target.querySelector('[type=submit]');b.textContent='Gespeichert ✓';setTimeout(render,700)});
+document.addEventListener('change',e=>{const fk=e.target.dataset?.f;if(fk){ui[fk]=e.target.value;zeigN=25;saveUi();render();return}if(e.target.id!=='imp')return;const f=e.target.files[0];if(!f)return;f.text().then(t=>{const j=JSON.parse(t);if(!Array.isArray(j.bestand))throw 0;bestand=j.bestand;cfg={...STD,...j.cfg};weg=j.weg||{};saveB();saveW();ls.set('fr_cfg',cfg);render();alert('Sicherung geladen: '+bestand.length+' Artikel')}).catch(()=>alert('Datei ist keine Flip-Radar-Sicherung.'))});
+
+async function laden(manuell){
+  try{
+    let p=window.__dp;window.__dp=null;
+    if(!p||manuell)p=fetch('data/deals.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status));
+    const neu=await p;try{performance.mark('fr-daten')}catch(_){}
+    if(data&&neu&&neu.ts===data.ts&&neu.ts_versuch===data.ts_versuch){if(manuell)render();return}
+    data=neu;ls.set('fr_daten',data);
+    const grenze=Date.now()-14*864e5;for(const k in weg)if(weg[k]<grenze)delete weg[k];saveW();
+  }catch(err){if(manuell&&ui.tab==='deals')$('#v-deals .sub')?.insertAdjacentHTML('afterend','<p class="banner">Keine Verbindung – zeige den zuletzt geladenen Stand.</p>')}
+  render();
+}
+render();laden(false);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')laden(false)});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
