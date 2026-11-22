@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Flip-Radar">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#06222e">
-<script>window.__dp=fetch('data/deals.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status));window.__dp.catch(()=>{})</script>
+<script>{const t=Date.now(),h=location.hostname,o=h.endsWith('.github.io')?h.split('.')[0]:'',r=location.pathname.split('/')[1]||'',j=u=>fetch(u,{cache:'no-store'}).then(x=>x.ok?x.json():null).catch(()=>null);window.__dq=[j('data/deals.json?t='+t)];if(o&&r)window.__dq.push(j(`https://raw.githubusercontent.com/${o}/${r}/main/data/deals.json?t=${t}`));window.__raw=o&&r?`https://raw.githubusercontent.com/${o}/${r}/main/`:''}</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
@@ -230,6 +230,7 @@ function renderDeals(){
     else if(alt>Math.max(90,iv*3)&&new Date().getHours()>=7&&new Date().getHours()<23)h+=`<p class="banner">Letzter Scan ${esc(vor(data.ts))} – MacBook aus, zugeklappt oder offline?</p>`;
     h+=`<div class="kpis"><div class="kpi"><b>${gut.length}</b><span>Top-Deals</span></div><div class="kpi"><b>${eur(pot)}</b><span>Potenzial</span></div><div class="kpi"><b>${eur(kapitalFrei())}</b><span>Kapital frei</span></div></div>`;
   }
+  if(imHome())h+=pushKarte();
   h+=`<div class="filt">${sel('nur','Zeigen',[['gut','Lohnend'],['plus','Mit Gewinn'],['alle','Alle']])}${sel('sort','Sortieren',[['gewinn','Gewinn'],['eurh','€/Std'],['roi','ROI'],['neu','Neueste'],['km','Nähe']])}${sel('kat','Ware',[['alle','Alles'],['apple','Apple'],['hifi','HiFi']])}</div>`;
   h+=l.length?`<div class="list">${l.slice(0,zeigN).map(kartenDeal).join('')}</div>${l.length>zeigN?`<div class="acts"><button class="btn" data-mehr>Weitere ${l.length-zeigN} anzeigen</button></div>`:''}`:`<div class="empty">${data?'Gerade nichts, das deine Kriterien erfüllt. „Mit Gewinn“ oder „Alle“ zeigt mehr.':'Keine Daten.'}</div>`;
   const tp=(data?.tipps||[]).filter(t=>!weg[t.adid]);
@@ -332,13 +333,38 @@ const FELDER=[
  ['Auto & Zeit',[['start','Startort','t'],['verbrauch','Verbrauch l/100 km','n'],['sprit','Super E5 €/l','n'],['kmh','Ø Geschwindigkeit km/h','n'],['minProDeal','Minuten je Deal (Abholung, Prüfen, Inserat, Versand)','n'],['stundenZiel','Mindest-Stundenlohn €','n']]],
  ['Ziele',[['kapital','Betriebskapital €','n'],['monatsZiel','Monatsziel Gewinn €','n']]]];
 function renderMehr(){
-  let h=`<div class="head"><h1>Mehr</h1></div><form class="set" id="set">${FELDER.map(([g,fs])=>`<h2>${g}</h2>${fs.map(([k,l,t,o])=>`<label>${l}${k==='sprit'?'<small>Sachsen Mitte Nov. 2026 ca. 1,93 €</small>':k==='ebayProz'?'<small>eBay gewerblich ab 1.7.2026: 5 % für viele Gebrauchtartikel, sonst 7 %</small>':''}${t==='sel'?`<select name="${k}">${o.map(([v,x])=>`<option value="${v}"${cfg[k]===v?' selected':''}>${x}</option>`).join('')}</select>`:`<input name="${k}" ${t==='n'?'inputmode="decimal"':''} value="${esc(t==='n'?String(cfg[k]).replace('.',','):cfg[k])}">`}</label>`).join('')}`).join('')}
+  let h=`<div class="head"><h1>Mehr</h1></div>${pushAktiv()?'<p class="info">Mitteilungen in dieser App: aktiv ✓</p>':pushKarte()}<form class="set" id="set">${FELDER.map(([g,fs])=>`<h2>${g}</h2>${fs.map(([k,l,t,o])=>`<label>${l}${k==='sprit'?'<small>Sachsen Mitte Nov. 2026 ca. 1,93 €</small>':k==='ebayProz'?'<small>eBay gewerblich ab 1.7.2026: 5 % für viele Gebrauchtartikel, sonst 7 %</small>':''}${t==='sel'?`<select name="${k}">${o.map(([v,x])=>`<option value="${v}"${cfg[k]===v?' selected':''}>${x}</option>`).join('')}</select>`:`<input name="${k}" ${t==='n'?'inputmode="decimal"':''} value="${esc(t==='n'?String(cfg[k]).replace('.',','):cfg[k])}">`}</label>`).join('')}`).join('')}
   <div class="acts"><button class="btn pri" type="submit">Speichern</button><button class="btn" type="button" data-std>Standardwerte</button></div></form>
   <details><summary>Prüfliste vor Ort</summary><h3>Apple</h3><ul><li>Seriennummer auf checkcoverage.apple.com – Modell muss passen</li><li>„Wo ist?“ vor deinen Augen aus, Gerät zurücksetzen lassen</li><li>Akkuzustand, Hinweis „Unbekanntes Teil“ (Display/Akku)</li><li>Face ID/Touch ID, Kameras, Lautsprecher, Mikro, Laden</li><li>Bar erst bei Übergabe – nie Vorkasse</li></ul><h3>HiFi / Plattenspieler</h3><ul><li>Kopfhörer oder kleine Box mitnehmen, beide Kanäle testen</li><li>Nadel, Riemen, Drehzahl; Regler auf Kratzen; Haube auf Risse</li><li>Typenschild fotografieren</li></ul><h3>Verhandeln</h3><ul><li>Bar + sofortige Abholung ist dein stärkstes Argument</li><li>Nie über „Max. zahlen“ gehen – der nächste Deal kommt</li><li>Mängel vor Ort benennen und Preis neu ansetzen</li></ul></details>
   <details><summary>So rechnet die App</summary><ul><li>Verkauf: Apple = 85 % des regionalen Angebots-Medians desselben Modells (mind. 3 Anzeigen), HiFi = Richtpreis aus regeln.json (Schätzung)</li><li>Gewinn = Verkauf − eBay-Gebühr − USt (nur Regelbesteuerung, auf die Differenz) − Einkauf − Teile − Sprit hin und zurück − Verpackung − Risiko</li><li>Max. zahlen = Einkauf, bei dem genau dein Mindestgewinn übrig bleibt</li><li>Grün = Mindestgewinn + Mindest-Stundenlohn erreicht und versandfähig</li></ul></details>
   <p class="foot">Daten: ${data?esc(zeit(data.ts)):'–'} · Apple-Vergleichspreise: ${data?.mediane_stand?esc(zeit(data.mediane_stand))+' ('+data.mediane_anzahl+' Modelle)':'–'}</p>`;
   $('#v-mehr').innerHTML=h;
 }
+
+// ---------------------------------------------------------------- Push direkt in die App
+const imHome=()=>window.navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+const pushOk=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const pushAktiv=()=>pushOk()&&Notification.permission==='granted'&&!!ls.get('fr_push',null);
+function b64u(s){s=s.replace(/-/g,'+').replace(/_/g,'/');s+='='.repeat((4-s.length%4)%4);const r=atob(s),a=new Uint8Array(r.length);for(let i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a}
+async function pushCfg(){const t=Date.now();for(const u of[window.__raw&&window.__raw+'data/push.json?t='+t,'data/push.json?t='+t].filter(Boolean)){try{const r=await fetch(u,{cache:'no-store'});if(r.ok){const j=await r.json();if(j.vapid)return j}}catch(_){}}return null}
+async function pushAn(btn){
+  const out=t=>{const p=btn.closest('.card')?.querySelector('.pmsg');if(p)p.textContent=t};
+  if(!pushOk()){out(imHome()?'Dieses iPhone unterstützt keine Web-Mitteilungen (iOS 16.4 oder neuer nötig).':'Bitte die App vom Home-Bildschirm öffnen und dort aktivieren.');return}
+  btn.disabled=true;out('Frage Erlaubnis an …');
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){out('Mitteilungen wurden nicht erlaubt. Ändern: Einstellungen → Mitteilungen → Flip-Radar.');btn.disabled=false;return}
+    const reg=await navigator.serviceWorker.ready,pc=await pushCfg();
+    if(!pc){out('Der Mac hat den Push-Schlüssel noch nicht hochgeladen – nach dem nächsten Scan nochmal tippen.');btn.disabled=false;return}
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(pc.vapid)});
+    await fetch('https://ntfy.sh/'+pc.abo,{method:'POST',body:JSON.stringify(sub)});
+    ls.set('fr_push',{t:Date.now(),ep:sub.endpoint});
+    out('Aktiviert ✓ Der Mac übernimmt die Anmeldung beim nächsten Scan (spätestens in 30 min). Danach öffnet jede Mitteilung direkt diese App – die ntfy-App brauchst du dann nicht mehr.');
+    render();
+  }catch(e){out('Fehler: '+(e&&e.message||e));btn.disabled=false}
+}
+const pushKarte=()=>pushAktiv()?'':`<div class="card" style="margin-bottom:10px"><b>Mitteilungen direkt in diese App</b><p class="info" style="margin:4px 0 0">${imHome()?'Einmal tippen und erlauben – dann öffnet jede Deal-Mitteilung diese App statt Safari.':'Funktioniert nur in der App vom Home-Bildschirm.'}</p><div class="acts"><button class="btn hot" data-pushan>Mitteilungen aktivieren</button></div><p class="info pmsg"></p></div>`;
 
 // ---------------------------------------------------------------- Steuerung
 function render(){
@@ -357,12 +383,13 @@ function datei(name,typ,text){const a=document.createElement('a');a.href=URL.cre
 async function kopiere(text,btn){try{await navigator.clipboard.writeText(text);if(btn)btn.textContent='Kopiert ✓'}catch(_){if(btn)btn.textContent='Bitte markieren und kopieren'}}
 
 document.addEventListener('click',e=>{
-  const el=e.target.closest('[data-tab],[data-nur],[data-sort],[data-kat],[data-auf],[data-kopier],[data-anfr],[data-kauf],[data-kaufok],[data-weg],[data-reload],[data-mehr],[data-bkauf],[data-bkaufok],[data-bdel],[data-vorl],[data-bins],[data-bvk],[data-bvkok],[data-bback],[data-bundo],[data-copy],[data-export],[data-std],[data-neuartikel],[data-naok]');
+  const el=e.target.closest('[data-tab],[data-nur],[data-sort],[data-kat],[data-auf],[data-kopier],[data-anfr],[data-kauf],[data-kaufok],[data-weg],[data-reload],[data-mehr],[data-pushan],[data-bkauf],[data-bkaufok],[data-bdel],[data-vorl],[data-bins],[data-bvk],[data-bvkok],[data-bback],[data-bundo],[data-copy],[data-export],[data-std],[data-neuartikel],[data-naok]');
   if(!el)return;const D=el.dataset;
   if(D.tab){ui.tab=D.tab;saveUi();render();scrollTo(0,0);return}
   for(const k of['nur','sort','kat'])if(D[k]){ui[k]=D[k];saveUi();render();return}
   if(D.reload!=null){laden(true);return}
   if(D.mehr!=null){zeigN+=50;render();return}
+  if(D.pushan!=null){pushAn(el);return}
   if(D.auf){offen=offen===D.auf?null:D.auf;kaufForm=null;render();return}
   if(D.kopier){const d=findeDeal(D.kopier);if(d){const ta=$('#msg-'+CSS.escape(D.kopier));const t=ta?ta.value:nachricht(d,calc(d));navigator.clipboard?.writeText(t).catch(()=>{})}return}
   if(D.anfr){neuInsLager(D.anfr,'angefragt');render();return}
@@ -392,20 +419,25 @@ document.addEventListener('click',e=>{
 document.addEventListener('submit',e=>{if(e.target.id!=='set')return;e.preventDefault();const f=new FormData(e.target);for(const[k,v]of f){cfg[k]=typeof STD[k]==='number'?(num(v)??STD[k]):String(v)}ls.set('fr_cfg',cfg);const b=e.target.querySelector('[type=submit]');b.textContent='Gespeichert ✓';setTimeout(render,700)});
 document.addEventListener('change',e=>{const fk=e.target.dataset?.f;if(fk){ui[fk]=e.target.value;zeigN=25;saveUi();render();return}if(e.target.id!=='imp')return;const f=e.target.files[0];if(!f)return;f.text().then(t=>{const j=JSON.parse(t);if(!Array.isArray(j.bestand))throw 0;bestand=j.bestand;cfg={...STD,...j.cfg};weg=j.weg||{};saveB();saveW();ls.set('fr_cfg',cfg);render();alert('Sicherung geladen: '+bestand.length+' Artikel')}).catch(()=>alert('Datei ist keine Flip-Radar-Sicherung.'))});
 
+const stand=d=>String(d?.ts_versuch&&d.ts_versuch>(d.ts||'')?d.ts_versuch:d?.ts||'');
+function nimm(neu){
+  if(!neu||!neu.ts)return false;
+  if(data&&stand(neu)<=stand(data))return false;
+  data=neu;ls.set('fr_daten',data);
+  const grenze=Date.now()-14*864e5;for(const k in weg)if(weg[k]<grenze)delete weg[k];saveW();
+  render();return true;
+}
 async function laden(manuell){
-  try{
-    let p=window.__dp;window.__dp=null;
-    if(!p||manuell)p=fetch('data/deals.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject(r.status));
-    const neu=await p;try{performance.mark('fr-daten')}catch(_){}
-    if(data&&neu&&neu.ts===data.ts&&neu.ts_versuch===data.ts_versuch){if(manuell)render();return}
-    data=neu;ls.set('fr_daten',data);
-    const grenze=Date.now()-14*864e5;for(const k in weg)if(weg[k]<grenze)delete weg[k];saveW();
-  }catch(err){if(manuell&&ui.tab==='deals')$('#v-deals .sub')?.insertAdjacentHTML('afterend','<p class="banner">Keine Verbindung – zeige den zuletzt geladenen Stand.</p>')}
-  render();
+  let q=window.__dq;window.__dq=null;
+  if(!q||manuell){const t=Date.now(),j=u=>fetch(u,{cache:'no-store'}).then(x=>x.ok?x.json():null).catch(()=>null);q=[j('data/deals.json?t='+t)];if(window.__raw)q.push(j(window.__raw+'data/deals.json?t='+t))}
+  let irgendwas=false;
+  await Promise.all(q.map(p=>p.then(neu=>{if(neu){irgendwas=true;try{performance.mark('fr-daten')}catch(_){}}nimm(neu)})));
+  if(!irgendwas&&manuell&&ui.tab==='deals')$('#v-deals .sub')?.insertAdjacentHTML('afterend','<p class="banner">Keine Verbindung – zeige den zuletzt geladenen Stand.</p>');
+  else if(manuell)render();
 }
 render();laden(false);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')laden(false)});
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});navigator.serviceWorker.addEventListener('message',e=>{if(e.data==='neu-laden'){ui.tab='deals';saveUi();laden(true)}})}
 }
 </script>
 </body>

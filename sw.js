@@ -1,7 +1,7 @@
 // Flip-Radar Service Worker
 // App-Gerüst: sofort aus dem Cache (kein Warten aufs Netz), im Hintergrund aktualisieren.
 // Daten (data/deals.json): nie aus diesem Cache – die App lädt sie selbst und hält eine Kopie.
-const CACHE = "flipradar-v3";
+const CACHE = "flipradar-v4";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "apple-touch-icon.png", "icon-192.png"];
 
 self.addEventListener("install", (e) => {
@@ -35,4 +35,22 @@ self.addEventListener("fetch", (e) => {
       return netz;
     })
   );
+});
+
+// Web-Push vom Mac: Mitteilung zeigen, Tipp öffnet diese App (nicht Safari)
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "Flip-Radar", {
+    body: d.body || "", icon: "icon-192.png", badge: "icon-192.png", tag: "flipradar-" + Date.now(), data: { url: "./" },
+  }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((liste) => {
+    for (const c of liste) {
+      if ("focus" in c) { c.postMessage("neu-laden"); return c.focus(); }
+    }
+    return clients.openWindow("./");
+  }));
 });
